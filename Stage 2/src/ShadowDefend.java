@@ -26,7 +26,7 @@ public class ShadowDefend extends AbstractGame {
     // says everything in the game is affected by this
     private static int timescale = INTIAL_TIMESCALE;
     private final TiledMap map;
-    private static int frameCount;
+    private static double frameCount;
     private StateOfGame gameState;
     private boolean tankWasPlaced = false;
     private ArrayList<Point> tankLoc = new ArrayList<>();
@@ -71,7 +71,7 @@ public class ShadowDefend extends AbstractGame {
         this.frameCount = Integer.MAX_VALUE;
         this.planeFC = Integer.MAX_VALUE;
 
-        /*new Slicer(polyline, "res/images/megaslicer.png", 3);*/
+        new Slicer(polyline, "res/images/megaslicer.png");
         player = new Player();
         slicerPos = new Point(0, 0);
        /* slicerNum = 0;*/
@@ -185,7 +185,7 @@ public class ShadowDefend extends AbstractGame {
             if (tank){
                 if (player.getCash() >= 250 && !canBeDrawn) {
                     player.setCash(player.getCash() - 250);
-                    tanks.add(new Tank(mousePoint, frameCount));
+                    tanks.add(new Tank(mousePoint));
                 }
             }
 
@@ -242,19 +242,20 @@ public class ShadowDefend extends AbstractGame {
             }
         }
 
+
         // Check if it is time to spawn a new slicer (and we have some left to spawn)
         if (waveStarted && (frameCount / FPS >= w.getDelay()) && (w.getSlicersSpawned() != w.getSlicerCount())) {
             if (se.getEnemyType().equals("slicer")) {
-                slicers.add(new Slicer(polyline, "res/images/slicer.png", 1, 1, 2, 1, 0));
+                slicers.add(new Slicer(polyline, "res/images/slicer.png"));
             }
             if (se.getEnemyType().equals("superslicer")) {
-                slicers.add(new SuperSlicer(polyline));
+                slicers.add(new Slicer(polyline, "res/images/superslicer.png"));
             }
             if (se.getEnemyType().equals("megaslicer")) {
-                slicers.add(new MegaSlicer(polyline));
+                slicers.add(new Slicer(polyline, "res/images/megaslicer.png"));
             }
             if (se.getEnemyType().equals("apexslicer")) {
-                slicers.add(new ApexSlicer(polyline));
+                slicers.add(new Slicer(polyline, "res/images/apexslicer.png"));
             }
             w.setSlicersSpawned(w.getSlicersSpawned() + 1);
             // Reset frame counter
@@ -267,11 +268,6 @@ public class ShadowDefend extends AbstractGame {
             w.setLineNum(w.getLineNum() + 1);
             w.setSlicersSpawned(0);
             se = w.loadWave();
-
-            for (int j= tanks.size() - 1; j >= 0; j--) {
-                Tank t = tanks.get(j);
-                t.setSlicerNum(0);
-            }
             if (se.getWaveType().equals("spawn")) {
                 w.setWaveNum(se.getWaveNum());
                 w.setDelay(se.getDelay() / 1000);
@@ -303,6 +299,11 @@ public class ShadowDefend extends AbstractGame {
         // Update all sprites, and remove them if they've finished
         for (int i = slicers.size() - 1; i >= 0; i--) {
             Slicer s = slicers.get(i);
+
+            /*if (inRange) {
+                slicerNum = i;
+                inRange = false;
+            }*/
             s.update(input);
             if (s.isFinished()) {
                 player.setLives(player.getLives() - 1);
@@ -313,10 +314,14 @@ public class ShadowDefend extends AbstractGame {
         // Doesn't update
         for (int j= tanks.size() - 1; j >= 0; j--){
             Tank t = tanks.get(j);
+            Point p1 = new Point(t.getCenter().x, t.getCenter().y);
+            Point p2 = new Point(gameState.getSlicerPosition().x, gameState.getSlicerPosition().y);
             Point p = null;
             boolean canDraw = false;
 
             if (waveStarted && t.getSlicerNum() < slicers.size() ) {
+
+                System.out.println(t.getSlicerNum());
                 t.setAimSlicer(slicers.get(t.getSlicerNum()));
                 canDraw = true;
                 p = new Point(t.getAimSlicer().getCenter().x, t.getAimSlicer().getCenter().y);
@@ -324,13 +329,13 @@ public class ShadowDefend extends AbstractGame {
 
             if (canDraw && waveStarted && tanks.get(j).slicerInRange(p)){
                 t.setInRange(true);
-                t.setSlicerLoc(p);
                 double angle = Math.atan2((t.getCenter().y - t.getAimSlicer().getCenter().y), (t.getCenter().x - t.getAimSlicer().getCenter().x));
                 t.setAngle(angle - 1.57);
             }
 
             if (t.isInRange() && canDraw && waveStarted && !tanks.get(j).slicerInRange(t.getAimSlicer().getCenter())) {
                 t.setSlicerNum(t.getSlicerNum() + 1);
+                /*System.out.println(t.getSlicerNum());*/
                 t.setInRange(false);
             }
             t.update(input);
