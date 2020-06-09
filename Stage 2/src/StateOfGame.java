@@ -4,24 +4,6 @@ import bagel.util.Point;
 public class StateOfGame {
     public BuyPanel buyPanel;
     public StatusPanel statusPanel;
-    private Point slicerPosition;
-    private int slicerNum = 0;
-
-    public int getSlicerNum() {
-        return slicerNum;
-    }
-
-    public void setSlicerNum(int slicerNum) {
-        this.slicerNum = slicerNum;
-    }
-
-    public Point getSlicerPosition() {
-        return slicerPosition;
-    }
-
-    public void setSlicerPosition(Point slicerPosition) {
-        this.slicerPosition = slicerPosition;
-    }
 
     public StateOfGame(){
         buyPanel = new BuyPanel();
@@ -35,10 +17,7 @@ public class StateOfGame {
         statusPanel.setTimeScale(ShadowDefend.getTimescale());
         buyPanel.render();
         statusPanel.render();
-        this.slicerPosition = new Point(0,0);
     }
-
-
 
 
     public void tankMoney(){

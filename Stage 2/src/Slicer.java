@@ -12,22 +12,33 @@ import java.util.List;
 public class Slicer extends spawnDetails {
 
     private static final String IMAGE_FILE = "res/images/megaslicer.png";
-    private static final double SPEED = 1;
+    private static double speed = 1;
     private final List<Point> polyline;
     private int targetPointIndex;
     private boolean finished;
+    private double health;
+    private double reward;
+    private double penalty;
+    private int babySlicers;
 
     /**
      * Creates a new Slicer
      *
      * @param polyline The polyline that the slicer must traverse (must have at least 1 point)
      */
-    public Slicer(List<Point> polyline, String image) {
+    public Slicer(List<Point> polyline, String image, double speed, double health, double reward, double penalty, int babySlicers) {
         super(polyline.get(0), image);
         this.polyline = polyline;
         this.targetPointIndex = 1;
         this.finished = false;
+        this.speed = speed;
+        this.health = health;
+        this.reward = reward;
+        this.penalty = penalty;
+        this.babySlicers = babySlicers;
     }
+
+
 
     /**
      * Updates the current state of the slicer. The slicer moves towards its next target point in
@@ -38,6 +49,7 @@ public class Slicer extends spawnDetails {
         if (finished) {
             return;
         }
+
         // Obtain where we currently are, and where we want to be
         Point currentPoint = getCenter();
         Point targetPoint = polyline.get(targetPointIndex);
@@ -48,7 +60,7 @@ public class Slicer extends spawnDetails {
         // Distance we are (in pixels) away from our target point
         double magnitude = distance.length();
         // Check if we are close to the target point
-        if (magnitude < SPEED * ShadowDefend.getTimescale()) {
+        if (magnitude < speed * ShadowDefend.getTimescale()) {
             // Check if we have reached the end
             if (targetPointIndex == polyline.size() - 1) {
                 finished = true;
@@ -58,14 +70,16 @@ public class Slicer extends spawnDetails {
                 targetPointIndex += 1;
             }
         }
+
         // Move towards the target point
         // We do this by getting a unit vector in the direction of our target, and multiplying it
         // by the speed of the slicer (accounting for the timescale)
-        super.move(distance.normalised().mul(SPEED * ShadowDefend.getTimescale()));
+        super.move(distance.normalised().mul(speed * ShadowDefend.getTimescale()));
         // Update current rotation angle to face target point
         setAngle(Math.atan2(targetPoint.y - currentPoint.y, targetPoint.x - currentPoint.x));
         super.update(input);
     }
+
 
     public boolean isFinished() {
         return finished;

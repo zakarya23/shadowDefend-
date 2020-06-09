@@ -5,7 +5,7 @@ public class Player {
     private boolean startWave;
 
     public Player() {
-        this.cash = 1000000;
+        this.cash = 10000;
         this.lives = 25;
     }
 

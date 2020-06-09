@@ -13,10 +13,15 @@ public abstract class spawnAirplane {
     private double angle;
     private Point start;
 
-    public spawnAirplane(Point point, Image image){
+    public spawnAirplane(Point point, Image image, Point startingH, Point startingV, int planeNum){
         this.point = point;
         this.image = image;
-        this.rect = image.getBoundingBoxAt(point);
+        if (planeNum % 2 != 0) {
+            this.rect = image.getBoundingBoxAt(startingH);
+        }
+        else {
+            this.rect = image.getBoundingBoxAt(startingV);
+        }
         angle = 0;
     }
 
@@ -31,6 +36,10 @@ public abstract class spawnAirplane {
 
     public Point getCenter() {
         return getRect().centre();
+    }
+
+    public void setAngle(double angle) {
+        this.angle = angle;
     }
 
     public void update(Input input) {
