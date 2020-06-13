@@ -1,72 +1,115 @@
 import bagel.Image;
 import bagel.Input;
 import bagel.util.Point;
+import java.util.ArrayList;
 
+/**
+ * The type Tank.
+ */
 public class Tank extends Towers {
-    private static final Image TANK_IMAGE = new Image("res/images/tank.png");
+    private static Image tankImage = new Image("res/images/tank.png");
     private static double damage = 1;
     private static double radius = 100;
-    private static double coolDown = 1000;
+    private static double coolDown = 1;
     private static double cost = 300;
-    private static final Image projectile = new Image("res/images/tank_projectile.png");
-    private Point aim;
+    private String projectile = ("res/images/tank_projectile.png");
     private Slicer aimSlicer;
-    private int slicerNum;
     private boolean inRange;
+    private ArrayList<Projectile> projectiles;
+    private int frameCount = 0;
 
+    /**
+     * Instantiates a new Tank.
+     *
+     * @param point the point
+     */
     public Tank(Point point){
-        super(point, TANK_IMAGE, damage, radius, coolDown, cost);
-        this.aim = new Point(0, 0);
-        this.slicerNum = 0;
+        super(point, tankImage, damage, radius, coolDown, cost);
+        this.inRange = false;
+        this.projectiles = new ArrayList<>();
         this.inRange = false;
     }
 
+    /**
+     * Instantiates a new Tank.
+     */
+    public Tank(Point point, Image tankImage, String projectile, double damage, double radius, double coolDown, double cost){
+        super(point, tankImage, damage, radius, coolDown, cost);
+        this.projectile = projectile;
+        this.inRange = false;
+        this.projectiles = new ArrayList<>();
+        this.inRange = false;
+    }
+
+    /**
+     * Is in range boolean.
+     *
+     * @return the boolean
+     */
     public boolean isInRange() {
         return inRange;
     }
 
+    /**
+     * Sets in range.
+     *
+     * @param inRange the in range
+     */
     public void setInRange(boolean inRange) {
         this.inRange = inRange;
     }
 
-    public int getSlicerNum() {
-        return slicerNum;
-    }
-
-    public void setSlicerNum(int slicerNum) {
-        this.slicerNum = slicerNum;
-    }
-
+    /**
+     * Gets aim slicer.
+     *
+     * @return the aim slicer
+     */
     public Slicer getAimSlicer() {
         return aimSlicer;
     }
 
-    public void setAimSlicer(Slicer aimSlicer) {
-        this.aimSlicer = aimSlicer;
-    }
-
+    /**
+     * Slicer in range boolean.
+     *
+     * @param point the point
+     * @return the boolean
+     */
     public boolean slicerInRange(Point point){
-        if (point.distanceTo(getLocation()) <= radius){
-            return true;
-        }
-        return false;
+        return (point.distanceTo(getLocation()) <= radius);
     }
 
     @Override
     public void update(Input input){
-        setAngle(getAngle());
+        frameCount++;
+
+        // Sets the aim slicer for the tank
+        for (int a = ShadowDefend.getSlicers().size() - 1 ; a>=0; a--){
+            Slicer s = ShadowDefend.getSlicers().get(a);
+            if (slicerInRange(s.getCenter())){
+                aimSlicer = s;
+                inRange = true;
+            }
+            // Launches a projectile when the cool down period is over for the tank
+            if (inRange && ((ShadowDefend.getTimescale() * frameCount)/ ShadowDefend.FPS) >= coolDown){
+                projectiles.add(new Projectile(getCenter(), s, projectile));
+                frameCount = 0;
+            }
+
+            // Handles the projectiles launched and removed after they hit the slicer
+            for (int i = projectiles.size() - 1; i>=0; i--){
+                Projectile p = projectiles.get(i);
+                // This is when slicer gets hit
+                if (p.getRect().intersects(s.getCenter()) && inRange){ // Get the point where it dies and check which slicer died
+                    p.setActive(false);
+                    inRange = false;
+                    s.setHealth(s.getHealth() - 1);
+                    frameCount = 0;
+                    projectiles.remove(p);
+                }
+                p.setAngle(getAngle());
+                p.update(input);
+            }
+        }
         super.update(input);
-    }
-
-    public void setTarget(Slicer s){
-        aim = s.getCenter();
-    }
-
-    public Point getAim() {
-        return aim;
-    }
-
-    public void setAim(Point aim) {
-        this.aim = aim;
     }
 }

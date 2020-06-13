@@ -10,129 +10,96 @@ import java.util.List;
  */
 public class ShadowDefend extends AbstractGame {
 
-    public String waveFile = "res/levels/waves.txt";
-
+    /**
+     * The Wave file.
+     */
+    // Map related
+    public String waveFile = "res/levels/waves.txt";        // File to be read for the waves
     private static final int HEIGHT = 768;
     private static final int WIDTH = 1024;
-
-    private static final String MAP_FILE = "res/levels/1.tmx";
-
-    // Change to suit system specifications. This could be
-    // dynamically determined but that is out of scope.
-    public static final double FPS = 60;
-    // The spawn delay (in seconds) to spawn slicers
-    private static final int INTIAL_TIMESCALE = 1;
-    // Timescale is made static because it is a universal property of the game and the specification
-    // says everything in the game is affected by this
-    private static int timescale = INTIAL_TIMESCALE;
-    private final TiledMap map;
-    private static double frameCount;
-    private StateOfGame gameState;
-    private boolean tankWasPlaced = false;
-    private ArrayList<Point> tankLoc = new ArrayList<>();
-    private boolean state = true;
-    private boolean inRange = false;
+    private String mapFile = "res/levels/1.tmx";            // Level to start off with
+    private TiledMap map;                                   // Variable that stores the map to be loaded
 
     // All tower related variables
-    private final List<Tank> tanks;
-    private final List<SuperTank> superTanks;
-    private final List<AirPlane> planes;
-    private boolean tank = false;
-    private boolean superTank = false;
-    private boolean plane = false;
-    private int planeNum = 1;
-    private int planeFC;
+    private List<Tank> tanks;                               // Holds all tanks that are placed and updates them
+    private List<AirPlane> planes;                          // Holds all planes placed and updates them
+    private boolean tank = false;                           // Checks if tank was selected
+    private boolean superTank = false;                      // Checks if super tank was selected
+    private boolean plane = false;                          // Checks if plane was selected
+    private int planeNum = 1;                               // Stores what number plane is about to fly
+    private boolean tankWasPlaced = false;                  // Checks if tank was placed
+    private boolean superTankPlaced = false;                // Checks if super tank was placed
+    private boolean planePlaced = false;                    // Checks if plane was placed
+    private final double NINETY = 1.57;                     // An angle adjustment for tanks
 
     // All wave related variables
-    private static Wave w;
-    private SpawnEvent se;
-    private boolean delayTime = false;
-    private static Player player;
-    private boolean waveStarted;
+    private static Wave w;                                  // The wave that stores the wave details
+    private SpawnEvent se;                                  // Details of what the spawn event is
+    private boolean delayTime = false;                      // If its the delay time
+    private static Player player;                           // Player class for handling player related things
+    private static boolean waveStarted;                     // If the next wave is started
+    private static boolean towerPlacing;                    // If player is placing a tower
+    private int waveNum;                                    // Stores wave number of current wave
+    private static boolean waveEnd;                         // Whether a wave ended or not
+    private int levelNum = 1;                               // Which level the player is currently on
+    private static final int INITIAL_TIMESCALE = 1;
+    private static final int MAX_TIMESCALE = 5;
+    private static int timescale = INITIAL_TIMESCALE;
+    private final int CONVERSION = 1000;
+    private final int START_POINT = 0;
+    private boolean nextLevel;
+    /**
+     * The constant FPS.
+     */
+    public static final double FPS = 60;
+    private static double frameCount;
 
     // All slicer related variables
-    private final List<Point> polyline;
-    private final List<Slicer> slicers;
-    private Point slicerPos;
-    /*private int slicerNum;*/
+    private static List<Point> polyline;                    // The path taken by slicers
+    private static List<Slicer> slicers;                    // Stores all the slicers
+
+    // All panels related
+    private StateOfGame gameState;
+    private final int topPanel = 120;
+    private final int bottomPanel = 720;
+    private final int TANK_COST = 250;
+    private final int SUPER_TANK_COST = 600;
+    private final int PLANE_COST = 500;
+
 
     /**
      * Creates a new instance of the ShadowDefend game
      */
     public ShadowDefend() {
         super(WIDTH, HEIGHT, "ShadowDefend");
-        this.map = new TiledMap(MAP_FILE);
-        this.polyline = map.getAllPolylines().get(0);
-        this.slicers = new ArrayList<>();
+        this.map = new TiledMap(mapFile);
+        polyline = map.getAllPolylines().get(0);
+        slicers = new ArrayList<>();
         this.tanks = new ArrayList<>();
-        this.superTanks = new ArrayList<>();
         this.planes = new ArrayList<>();
-        this.waveStarted = false;
-        this.frameCount = Integer.MAX_VALUE;
-        this.planeFC = Integer.MAX_VALUE;
-
-        new Slicer(polyline, "res/images/megaslicer.png");
+        waveStarted = false;
+        frameCount = Integer.MAX_VALUE;
         player = new Player();
-        slicerPos = new Point(0, 0);
-       /* slicerNum = 0;*/
         w = new Wave();
         se = w.loadWave();
+        waveNum = se.getWaveNum();
+        waveEnd = false;
+        nextLevel = false;
 
+        // Loads the first wave
         if (se.getWaveType().equals("spawn")){
-            w.setWaveNum(se.getWaveNum());
-            w.setDelay(se.getDelay() / 1000);
-            w.setSlicersSpawned(0);
-            w.setSlicerCount(se.getSpawnNum());
-            w.setSlicerType(se.getEnemyType());
+            spawnWave();
         }
     }
 
+
+    /**
+     * The entry point of application.
+     *
+     * @param args the input arguments
+     */
     public static void main(String[] args) {
         new ShadowDefend().run();
-    }
-
-    // Returns details of the wave
-    public static Wave getWave() {
-        return w;
-    }
-
-    // Returns the details from the player class
-    public static Player getPlayer() {
-        return player;
-    }
-
-    public static int getTimescale() {
-        return timescale;
-    }
-
-    // Increases the timescale
-    private void increaseTimescale() {
-        timescale++;
-    }
-
-    // Decreases the timescale but doesn't go below the base timescale
-    private void decreaseTimescale() {
-        if (timescale > INTIAL_TIMESCALE) {
-            timescale--;
-        }
-    }
-
-    private void drawTank(Point point) {
-        gameState.buyPanel.getTank().getImage().draw(point.x, point.y);
-    }
-
-    public static double getFrameCount() {
-        return frameCount;
-    }
-
-    private void changeWave() {
-        w.setLineNum(w.getLineNum() + 1);
-        w.setSlicersSpawned(0);
-        se = w.loadWave();
-        w.setWaveNum(se.getWaveNum());
-        w.setDelay(se.getDelay() / 1000);
-        w.setSlicerCount(se.getSpawnNum());
-        w.setSlicerType(se.getEnemyType());
     }
 
     /**
@@ -142,9 +109,8 @@ public class ShadowDefend extends AbstractGame {
      */
     @Override
     protected void update(Input input) {
-        // Need to draw tank in here cos update removes it
 
-        // Increase the frame counter by the current timescale
+        // If the wave event is a delay, then this waits for the delay time shown.
         if (delayTime){
             if (frameCount/ FPS >= w.getDelay()){
                 frameCount = 0;
@@ -154,7 +120,7 @@ public class ShadowDefend extends AbstractGame {
             }
         }
 
-
+        // Increase the frame counter by the current timescale
         frameCount += getTimescale();
 
         // Draw map from the top left of the window
@@ -176,117 +142,150 @@ public class ShadowDefend extends AbstractGame {
             decreaseTimescale();
         }
 
-        if (input.isUp(MouseButtons.LEFT)){
-            double xPos = input.getMouseX();
-            double yPos = input.getMouseY();
-            Point mousePoint = new Point(xPos, yPos);
-            boolean canBeDrawn = map.getPropertyBoolean((int) xPos, (int) yPos, "blocked", false);
-
-            if (tank){
-                if (player.getCash() >= 250 && !canBeDrawn) {
-                    player.setCash(player.getCash() - 250);
-                    tanks.add(new Tank(mousePoint));
-                }
-            }
-
-            if (superTank){
-                if (player.getCash() >= 600 && !canBeDrawn) {
-                    player.setCash(player.getCash() - 600);
-                    superTanks.add(new SuperTank(mousePoint));
-                }
-            }
-
-            if (plane){
-                if (player.getCash() >= 500 && canBeDrawn) {
-                    player.setCash(player.getCash() - 500);
-                    planes.add(new AirPlane(mousePoint, planeNum, frameCount));
-                    planeNum++;
-                }
-            }
-            tank = false;
-            superTank = false;
-            plane = false;
+        // Want to deselect the item that was selected
+        if (input.wasPressed(MouseButtons.RIGHT)){
+            deselect();
         }
 
-        if (input.isDown(MouseButtons.LEFT)){
-            double xPos = input.getMouseX();
-            double yPos = input.getMouseY();
-            Point mousePoint = new Point(xPos, yPos);
+        // Mouse was let go or wasn't clicked yet
+        if (input.isUp(MouseButtons.LEFT)){
+            Point mousePoint = new Point(input.getMouseX(), input.getMouseY());     // Current location of mouse
 
-            // If mouse is hovering over the airplane on buy panel
-            if (gameState.buyPanel.getAirplane().getArea().intersects(mousePoint)){
-                plane = true;
+            boolean notOnPanel = (mousePoint.y > topPanel) && (mousePoint.y < bottomPanel);
+
+            // If tank was selected in panel
+            if (tank && validLocation(mousePoint)){
+                // Draws a tank at the Mouse current location
+                gameState.buyPanel.getTank().getImage().draw(mousePoint.x, mousePoint.y);
+                tankWasPlaced = true;
             }
 
-            if (plane){
-                gameState.buyPanel.getAirplane().getImage().draw(xPos, yPos);
+            // If super tank was selected in panel
+            if (superTank && validLocation(mousePoint)){
+                // Draws a super tank at the Mouse current location
+                gameState.buyPanel.getSuperTank().getImage().draw(mousePoint.x, mousePoint.y);
+                superTankPlaced = true;
             }
+
+            // If plane was selected in panel
+            if (plane && notOnPanel){
+                // Draws a plane at the Mouse current location
+                gameState.buyPanel.getAirplane().getImage().draw(mousePoint.x, mousePoint.y);
+                planePlaced = true;
+            }
+        }
+
+        if (input.wasPressed(MouseButtons.LEFT)){
+            Point mousePoint = new Point(input.getMouseX(), input.getMouseY());
+            boolean notOnPanel = (mousePoint.y > topPanel) && (mousePoint.y < bottomPanel);
 
             // If mouse is hovering over the tank on buy panel
             if (gameState.buyPanel.getTank().getArea().intersects(mousePoint)){
                 tank = true;
-                tankWasPlaced = true;
-            }
-
-            if (tank){
-                gameState.buyPanel.getTank().getImage().draw(xPos, yPos);
+                towerPlacing = true;
             }
 
             // If mouse is hovering over the super tank on buy panel
             if (gameState.buyPanel.getSuperTank().getArea().intersects(mousePoint)){
                 superTank = true;
+                towerPlacing = true;
             }
 
-            if (superTank){
-                gameState.buyPanel.getSuperTank().getImage().draw(xPos, yPos);
+            // If mouse is hovering over the airplane on buy panel
+            if (gameState.buyPanel.getAirplane().getArea().intersects(mousePoint)){
+                plane = true;
+                towerPlacing = true;
+            }
+
+            // These are for the 2nd left click when the player wants to place the tower
+            if (tankWasPlaced && player.getCash() >= TANK_COST && validLocation(mousePoint)){
+                player.setCash(player.getCash() - TANK_COST);
+                tanks.add(new Tank(mousePoint));
+                tank = false;
+                tankWasPlaced = false;
+                towerPlacing = false;
+            }
+
+            if (superTankPlaced && player.getCash() >= SUPER_TANK_COST && validLocation(mousePoint)) {
+                player.setCash(player.getCash() - SUPER_TANK_COST);
+                tanks.add(new SuperTank(mousePoint));
+                superTank = false;
+                superTankPlaced = false;
+                towerPlacing = false;
+            }
+
+            if (planePlaced && player.getCash() >= PLANE_COST && notOnPanel) {
+                player.setCash(player.getCash() - PLANE_COST);
+                planes.add(new AirPlane(mousePoint, planeNum, frameCount));
+                planeNum++;
+                planePlaced = false;
+                plane = false;
+                towerPlacing = false;
             }
         }
 
-
-        // Check if it is time to spawn a new slicer (and we have some left to spawn)
+        // Check if it is time to spawn a new slicer
         if (waveStarted && (frameCount / FPS >= w.getDelay()) && (w.getSlicersSpawned() != w.getSlicerCount())) {
-            if (se.getEnemyType().equals("slicer")) {
-                slicers.add(new Slicer(polyline, "res/images/slicer.png"));
+            String enemy = se.getEnemyType();
+            if (enemy.equals("slicer")) {
+                slicers.add(new Slicer(polyline));
             }
-            if (se.getEnemyType().equals("superslicer")) {
-                slicers.add(new Slicer(polyline, "res/images/superslicer.png"));
+            if (enemy.equals("superslicer")) {
+                slicers.add(new SuperSlicer(polyline, START_POINT));
             }
-            if (se.getEnemyType().equals("megaslicer")) {
-                slicers.add(new Slicer(polyline, "res/images/megaslicer.png"));
+            if (enemy.equals("megaslicer")) {
+                slicers.add(new MegaSlicer(polyline, START_POINT));
             }
-            if (se.getEnemyType().equals("apexslicer")) {
-                slicers.add(new Slicer(polyline, "res/images/apexslicer.png"));
+            if (enemy.equals("apexslicer")) {
+                slicers.add(new ApexSlicer(polyline, START_POINT));
             }
             w.setSlicersSpawned(w.getSlicersSpawned() + 1);
+
             // Reset frame counter
             frameCount = 0;
         }
 
-        // Close game if all slicers have finished traversing the polyline
+       // Changes the wave number after ended and if all waves ended then loads next level
         if (w.getSlicersSpawned() == w.getSlicerCount() && slicers.isEmpty()) {
-
-            w.setLineNum(w.getLineNum() + 1);
-            w.setSlicersSpawned(0);
-            se = w.loadWave();
-            if (se.getWaveType().equals("spawn")) {
-                w.setWaveNum(se.getWaveNum());
-                w.setDelay(se.getDelay() / 1000);
-                w.setSlicerCount(se.getSpawnNum());
-                w.setSlicerType(se.getEnemyType());
+            // One level ended so loads next level
+            if (w.getWaveDetail().size() - 1 == w.getLineNum()){
+                levelNum++;
+                loadNextLevel(levelNum);
+                nextLevel = true;
             }
-            else {
-                w.setDelay(se.getDelay() / 1000);
-                delayTime = true;
-                waveStarted = false;
-                /*Window.close();*/
+
+            // If one level ended this loads the next level
+            if (nextLevel){
+                waveEnd = false;
+                nextLevel = false;
+                w = new Wave();
+                w.setLineNum(-1);
+            }
+
+            // While waves are going this part keeps updating
+            if (!waveEnd) {
+                w.setLineNum(w.getLineNum() + 1);
+                se = w.loadWave();
+                // Wave ended so player is awarded cash
+                if (se.getWaveNum() > waveNum) {
+                    waveStarted = false;
+                    player.setCash(player.getCash() + 150 + (waveNum * 100));
+                    waveNum++;
+                }
+
+                if (se.getWaveType().equals("spawn")) {
+                    spawnWave();
+                }
+                else {
+                    // Handles the delay events
+                    w.setDelay(se.getDelay() / CONVERSION);
+                    delayTime = true;
+                    waveStarted = false;
+                }
             }
         }
 
-        for (int k = superTanks.size() - 1; k >= 0; k--){
-            SuperTank st = superTanks.get(k);
-            st.update(input);
-        }
-
+        // Spawns all the planes that were placed
         for (int a = planes.size() - 1; a >= 0; a--){
             AirPlane ap = planes.get(a);
             ap.setFrameCount(ap.getFrameCount() + 1);
@@ -299,46 +298,201 @@ public class ShadowDefend extends AbstractGame {
         // Update all sprites, and remove them if they've finished
         for (int i = slicers.size() - 1; i >= 0; i--) {
             Slicer s = slicers.get(i);
-
-            /*if (inRange) {
-                slicerNum = i;
-                inRange = false;
-            }*/
             s.update(input);
+            if (s.isGotEnd()){
+                player.setLives((int) (player.getLives() - s.getPenalty()));
+                // Player loses the game
+                if (player.getLives() <= 0){
+                    Window.close();
+                }
+            }
             if (s.isFinished()) {
-                player.setLives(player.getLives() - 1);
                 slicers.remove(i);
             }
         }
 
-        // Doesn't update
+        // Updates all tanks that were placed
         for (int j= tanks.size() - 1; j >= 0; j--){
             Tank t = tanks.get(j);
-            Point p1 = new Point(t.getCenter().x, t.getCenter().y);
-            Point p2 = new Point(gameState.getSlicerPosition().x, gameState.getSlicerPosition().y);
-            Point p = null;
-            boolean canDraw = false;
-
-            if (waveStarted && t.getSlicerNum() < slicers.size() ) {
-
-                System.out.println(t.getSlicerNum());
-                t.setAimSlicer(slicers.get(t.getSlicerNum()));
-                canDraw = true;
-                p = new Point(t.getAimSlicer().getCenter().x, t.getAimSlicer().getCenter().y);
-            }
-
-            if (canDraw && waveStarted && tanks.get(j).slicerInRange(p)){
-                t.setInRange(true);
+            // Sets the aim slicer and the direction that the tank is pointing
+            if (waveStarted && t.isInRange()){
                 double angle = Math.atan2((t.getCenter().y - t.getAimSlicer().getCenter().y), (t.getCenter().x - t.getAimSlicer().getCenter().x));
-                t.setAngle(angle - 1.57);
-            }
-
-            if (t.isInRange() && canDraw && waveStarted && !tanks.get(j).slicerInRange(t.getAimSlicer().getCenter())) {
-                t.setSlicerNum(t.getSlicerNum() + 1);
-                /*System.out.println(t.getSlicerNum());*/
+                t.setAngle(angle - NINETY);
                 t.setInRange(false);
             }
             t.update(input);
         }
+    }
+
+
+    /**
+     * Gets wave.
+     *
+     * @return the wave
+     */
+    // Returns details of the wave
+    public static Wave getWave() {
+        return w;
+    }
+
+    /**
+     *  Returns the details from the player class
+      */
+    public static Player getPlayer() {
+        return player;
+    }
+
+    /**
+     * Gets timescale.
+     *
+     * @return the timescale
+     */
+    public static int getTimescale() {
+        return timescale;
+    }
+
+    // Increases the timescale
+    private void increaseTimescale() {
+            if (timescale < MAX_TIMESCALE) {
+            timescale++;
+        }
+    }
+
+    // Decreases the timescale but doesn't go below the base timescale
+    private void decreaseTimescale() {
+        if (timescale > INITIAL_TIMESCALE) {
+            timescale--;
+        }
+    }
+
+    /**
+     * Loads the next wave once one finishes.
+     */
+    private void changeWave() {
+        w.setLineNum(w.getLineNum() + 1);
+        w.setSlicersSpawned(0);
+        se = w.loadWave();
+        w.setWaveNum(se.getWaveNum());
+        w.setDelay(se.getDelay() / CONVERSION);
+        w.setSlicerCount(se.getSpawnNum());
+        w.setSlicerType(se.getEnemyType());
+    }
+
+    /**
+     * Gets slicers.
+     *
+     * @return the slicers
+     */
+    public static List<Slicer> getSlicers() {
+        return slicers;
+    }
+
+    /**
+     * Gets polyline.
+     *
+     * @return the polyline
+     */
+    public static List<Point> getPolyline() {
+        return polyline;
+    }
+
+    /**
+     * Is wave started boolean.
+     *
+     * @return the boolean
+     */
+    public static boolean isWaveStarted() {
+        return waveStarted;
+    }
+
+    /**
+     * Is tower placing boolean.
+     *
+     * @return the boolean
+     */
+    public static boolean isTowerPlacing() {
+        return towerPlacing;
+    }
+
+    /**
+     * Is wave end boolean.
+     *
+     * @return the boolean
+     */
+    public static boolean isWaveEnd() {
+        return waveEnd;
+    }
+
+    /**
+     * Load next level.
+     *
+     * @param levelNum the level num
+     */
+    // If one level ends then this loads the next one
+    public void loadNextLevel(int levelNum) {
+        waveEnd = true;
+        mapFile = String.format("res/levels/%s.tmx", levelNum);
+        this.map = new TiledMap(mapFile);
+        polyline = map.getAllPolylines().get(0);
+        slicers = new ArrayList<>();
+        this.tanks = new ArrayList<>();
+        this.planes = new ArrayList<>();
+        waveStarted = false;
+        frameCount = Integer.MAX_VALUE;
+        player = new Player();
+        w = new Wave();
+        se = w.loadWave();
+        waveNum = se.getWaveNum();
+        w.setLineNum(1);
+        if (se.getWaveType().equals("spawn")){
+            spawnWave();
+        }
+    }
+
+    /**
+     * Some tower was placed so we need to make sure everything else is set to false
+     */
+    private void deselect() {
+        tank = false;
+        superTank = false;
+        plane = false;
+        tankWasPlaced = false;
+        superTankPlaced = false;
+        planePlaced = false;
+    }
+
+    /**
+     * Checks whether the place to put the tower is valid
+     * @param mousePoint
+     * @return
+     */
+    private boolean validLocation(Point mousePoint){
+        boolean canBeDrawn = map.getPropertyBoolean((int) mousePoint.x,
+                (int) mousePoint.y, "blocked", false);
+        boolean notOnPanel = (mousePoint.y > topPanel) && (mousePoint.y < bottomPanel);
+        boolean finalOut = false;
+
+        if (!canBeDrawn && notOnPanel){
+            finalOut = true;
+        }
+
+        // Iterates over each tank to see if it doesn't collide with any other tanks
+        for (Tank tank : tanks){
+            if (tank.getRect().intersects(mousePoint)){
+                finalOut = false;
+            }
+        }
+        return finalOut;
+    }
+
+    /**
+     * Spawns a wave
+     */
+    private void spawnWave() {
+        w.setWaveNum(se.getWaveNum());
+        w.setDelay(se.getDelay() / CONVERSION);
+        w.setSlicersSpawned(0);
+        w.setSlicerCount(se.getSpawnNum());
+        w.setSlicerType(se.getEnemyType());
     }
 }

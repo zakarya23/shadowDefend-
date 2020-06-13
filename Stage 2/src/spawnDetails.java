@@ -12,7 +12,7 @@ import bagel.util.Vector2;
 public abstract class spawnDetails {
 
     private final Image image;
-    private final Rectangle rect;
+    private Rectangle rect;
     private double angle;
 
     /**
@@ -27,11 +27,29 @@ public abstract class spawnDetails {
         this.angle = 0;
     }
 
+    /**
+     * Sets rect.
+     *
+     * @param rect the rect
+     */
+    public void setRect(Rectangle rect) {
+        this.rect = rect;
+    }
 
+    /**
+     * Gets rect.
+     *
+     * @return the rect
+     */
     public Rectangle getRect() {
         return new Rectangle(rect);
     }
 
+    /**
+     * Gets angle.
+     *
+     * @return the angle
+     */
     public double getAngle() {
         return angle;
     }
@@ -45,16 +63,28 @@ public abstract class spawnDetails {
         rect.moveTo(rect.topLeft().asVector().add(dx).asPoint());
     }
 
+    /**
+     * Gets center.
+     *
+     * @return the center
+     */
     public Point getCenter() {
         return getRect().centre();
     }
 
+    /**
+     * Sets angle.
+     *
+     * @param angle the angle
+     */
     public void setAngle(double angle) {
         this.angle = angle;
     }
 
     /**
      * Updates the spawnDetails. Default behaviour is to render the spawnDetails at its current position.
+     *
+     * @param input the input
      */
     public void update(Input input) {
         image.draw(getCenter().x, getCenter().y, new DrawOptions().setRotation(angle));

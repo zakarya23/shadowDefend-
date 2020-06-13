@@ -41,10 +41,6 @@ public abstract class Towers {
         return location;
     }
 
-    public void slicerTarget(){
-
-    }
-
     public double getAngle() {
         return angle;
     }
@@ -64,5 +60,4 @@ public abstract class Towers {
     public void update(Input input){
         towerImage.draw(getCenter().x, getCenter().y, new DrawOptions().setRotation(angle));
     }
-
 }
